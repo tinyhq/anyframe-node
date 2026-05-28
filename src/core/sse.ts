@@ -98,9 +98,7 @@ export async function* parseSSE(lines: AsyncIterable<string>): AsyncIterable<SSE
  * body. The reader is released automatically when the iterator ends or
  * throws.
  */
-export async function* iterSSELines(
-  body: ReadableStream<Uint8Array>,
-): AsyncIterable<string> {
+export async function* iterSSELines(body: ReadableStream<Uint8Array>): AsyncIterable<string> {
   const decoder = new TextDecoder("utf-8");
   const reader = body.getReader();
   let buffer = "";

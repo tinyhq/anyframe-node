@@ -98,10 +98,7 @@ export class Connectors extends APIResource {
   }
 
   /** Create a bearer-token connector with a pre-issued token. */
-  createBearer(
-    params: CreateBearerConnectorParams,
-    options?: RequestOptions,
-  ): Promise<Connector> {
+  createBearer(params: CreateBearerConnectorParams, options?: RequestOptions): Promise<Connector> {
     return this._client.request<Connector>({
       method: "POST",
       path: "/api/connectors/bearer",

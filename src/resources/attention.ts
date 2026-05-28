@@ -24,10 +24,7 @@ export interface ListAttentionParams {
 
 export class Attention extends APIResource {
   /** Return up to `limit` items, server-ordered. */
-  list(
-    params: ListAttentionParams = {},
-    options?: RequestOptions,
-  ): Promise<AttentionItem[]> {
+  list(params: ListAttentionParams = {}, options?: RequestOptions): Promise<AttentionItem[]> {
     return this._client.request<AttentionItem[]>({
       method: "GET",
       path: "/api/attention",

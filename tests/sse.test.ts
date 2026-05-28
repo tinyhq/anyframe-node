@@ -38,9 +38,7 @@ describe("parseSSE", () => {
 
   it("emits multiple frames in order", async () => {
     const events = await collect(
-      parseSSE(
-        fromArray(["event: a", "data: 1", "", "event: b", "data: 2", "id: 7", ""]),
-      ),
+      parseSSE(fromArray(["event: a", "data: 1", "", "event: b", "data: 2", "id: 7", ""])),
     );
     expect(events).toEqual([
       { event: "a", data: "1", id: null },
@@ -66,9 +64,9 @@ describe("parseSSE", () => {
 
 describe("decodeSSEData", () => {
   it("parses JSON data", () => {
-    expect(
-      decodeSSEData<{ ok: boolean }>({ event: "x", data: '{"ok":true}', id: null }),
-    ).toEqual({ ok: true });
+    expect(decodeSSEData<{ ok: boolean }>({ event: "x", data: '{"ok":true}', id: null })).toEqual({
+      ok: true,
+    });
   });
 
   it("returns null for empty data", () => {

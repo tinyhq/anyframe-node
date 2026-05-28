@@ -26,10 +26,7 @@ export class Stream<T> implements AsyncIterable<T> {
   private readonly iterator: () => AsyncIterableIterator<T>;
   private consumed = false;
 
-  constructor(
-    iteratorFactory: () => AsyncIterableIterator<T>,
-    controller: AbortController,
-  ) {
+  constructor(iteratorFactory: () => AsyncIterableIterator<T>, controller: AbortController) {
     this.iterator = iteratorFactory;
     this.controller = controller;
   }

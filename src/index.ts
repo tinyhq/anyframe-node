@@ -58,12 +58,7 @@ export type { SSEEvent } from "./core/sse.js";
 
 // Resource classes — exported so users can reference `Agents` in type
 // positions without going through `Anyframe["agents"]`.
-export {
-  AgentConnectorToggles,
-  AgentMcps,
-  AgentSkills,
-  Agents,
-} from "./resources/agents.js";
+export { AgentConnectorToggles, AgentMcps, AgentSkills, Agents } from "./resources/agents.js";
 export type {
   CreateAgentParams,
   CreateMcpParams,

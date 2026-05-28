@@ -13,19 +13,9 @@
 
 // ── Shared primitives ──────────────────────────────────────────────────────
 
-export type SessionStatus =
-  | "booting"
-  | "running"
-  | "snapshotting"
-  | "terminated"
-  | "error";
+export type SessionStatus = "booting" | "running" | "snapshotting" | "terminated" | "error";
 
-export type PreviewStatus =
-  | "starting"
-  | "running"
-  | "paused"
-  | "stopped"
-  | "error";
+export type PreviewStatus = "starting" | "running" | "paused" | "stopped" | "error";
 
 export type Runtime = "claude" | "codex";
 
@@ -33,25 +23,13 @@ export type McpTransport = "http" | "sse" | "stdio";
 
 export type SkillSource = "inline" | "git";
 
-export type ConnectorAuthKind =
-  | "oauth_dcr"
-  | "oauth_preregistered"
-  | "bearer_token";
+export type ConnectorAuthKind = "oauth_dcr" | "oauth_preregistered" | "bearer_token";
 
-export type CatalogSetupKind =
-  | "oauth_dcr"
-  | "oauth_preregistered"
-  | "bearer_token"
-  | "custom_mcp";
+export type CatalogSetupKind = "oauth_dcr" | "oauth_preregistered" | "bearer_token" | "custom_mcp";
 
 export type CatalogTrustLevel = "official" | "verified" | "community";
 
-export type BuildState =
-  | "queued"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "cancelled";
+export type BuildState = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
 export type PermissionPreset = "read_only" | "standard" | "full_trust";
 
@@ -346,7 +324,4 @@ export interface AttentionPausedItem {
   at: string;
 }
 
-export type AttentionItem =
-  | AttentionPendingItem
-  | AttentionIdleItem
-  | AttentionPausedItem;
+export type AttentionItem = AttentionPendingItem | AttentionIdleItem | AttentionPausedItem;

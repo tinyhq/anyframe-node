@@ -44,11 +44,7 @@ export class APIError extends AnyframeError {
    * envelope where `detail` is either a string message or a structured list
    * (Pydantic validation errors).
    */
-  static from(
-    status: number,
-    body: unknown,
-    headers: Record<string, string>,
-  ): APIError {
+  static from(status: number, body: unknown, headers: Record<string, string>): APIError {
     const message = extractMessage(body, status);
     const opts = { body, headers };
     if (status === 401) return new AuthenticationError(message, opts);
@@ -143,10 +139,7 @@ export class RateLimitError extends APIError {
   /** Seconds the server asked the caller to wait, parsed from `Retry-After`. */
   readonly retryAfter: number | undefined;
 
-  constructor(
-    message = "rate limited",
-    options: ErrorOptions & { retryAfter?: number } = {},
-  ) {
+  constructor(message = "rate limited", options: ErrorOptions & { retryAfter?: number } = {}) {
     super(429, message, options);
     this.name = "RateLimitError";
     this.retryAfter = options.retryAfter;

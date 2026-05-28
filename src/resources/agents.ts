@@ -137,11 +137,7 @@ export class AgentMcps extends APIResource {
     });
   }
 
-  create(
-    agentId: number,
-    params: CreateMcpParams,
-    options?: RequestOptions,
-  ): Promise<AgentMcp> {
+  create(agentId: number, params: CreateMcpParams, options?: RequestOptions): Promise<AgentMcp> {
     return this._client.request({
       method: "POST",
       path: `/api/agents/${agentId}/mcps`,
@@ -349,11 +345,7 @@ export class Agents extends APIResource {
   }
 
   /** Return a signed URL for the build's archived log file. */
-  buildLogUrl(
-    agentId: number,
-    buildId: number,
-    options?: RequestOptions,
-  ): Promise<LogUrl> {
+  buildLogUrl(agentId: number, buildId: number, options?: RequestOptions): Promise<LogUrl> {
     return this._client.request({
       method: "GET",
       path: `/api/agents/${agentId}/builds/${buildId}/log_url`,
@@ -399,10 +391,7 @@ export class Agents extends APIResource {
    * Rejects with {@link AnyframeError} on `failed` and `TimeoutError`-like
    * behavior on timeout.
    */
-  async waitForBuild(
-    agentId: number,
-    options: WaitForBuildOptions = {},
-  ): Promise<BuildStatus> {
+  async waitForBuild(agentId: number, options: WaitForBuildOptions = {}): Promise<BuildStatus> {
     const timeout = options.timeout ?? 600_000;
     const pollInterval = options.pollInterval ?? 2_000;
     const deadline = Date.now() + timeout;
@@ -416,16 +405,12 @@ export class Agents extends APIResource {
       });
       if (status.state && TERMINAL_BUILD_STATES.has(status.state)) {
         if (status.state === "failed") {
-          throw new AnyframeError(
-            `build failed: ${status.error ?? "unknown error"}`,
-          );
+          throw new AnyframeError(`build failed: ${status.error ?? "unknown error"}`);
         }
         return status;
       }
       if (Date.now() >= deadline) {
-        throw new AnyframeError(
-          `build for agent ${agentId} did not finish within ${timeout}ms`,
-        );
+        throw new AnyframeError(`build for agent ${agentId} did not finish within ${timeout}ms`);
       }
       await sleep(pollInterval);
     }

@@ -60,9 +60,7 @@ describe("HTTPClient", () => {
 
   it("404 surfaces NotFoundError with the body message", async () => {
     const { client, mock } = makeClient();
-    mock.get("/api/agents/999", () =>
-      jsonResponse({ detail: "agent not found" }, { status: 404 }),
-    );
+    mock.get("/api/agents/999", () => jsonResponse({ detail: "agent not found" }, { status: 404 }));
     await expect(client.agents.get(999)).rejects.toMatchObject({
       name: "NotFoundError",
       status: 404,
@@ -91,9 +89,7 @@ describe("HTTPClient", () => {
     const { client, mock } = makeClient();
     // Handler that never resolves — the SDK should fire its own timeout.
     mock.get("/api/me", () => new Promise<Response>(() => {}));
-    await expect(client.me({ timeout: 20 })).rejects.toBeInstanceOf(
-      APIConnectionTimeoutError,
-    );
+    await expect(client.me({ timeout: 20 })).rejects.toBeInstanceOf(APIConnectionTimeoutError);
   });
 
   it("wraps a thrown TypeError as APIConnectionError", async () => {
@@ -125,10 +121,7 @@ describe("HTTPClient retries", () => {
   it("retries a 429 once and surfaces RateLimitError after exhausting retries", async () => {
     const { client, mock } = makeClient({ maxRetries: 1 });
     mock.get("/api/me", () =>
-      jsonResponse(
-        { detail: "slow down" },
-        { status: 429, headers: { "retry-after": "0" } },
-      ),
+      jsonResponse({ detail: "slow down" }, { status: 429, headers: { "retry-after": "0" } }),
     );
     await expect(client.me()).rejects.toBeInstanceOf(RateLimitError);
   });

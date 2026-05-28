@@ -290,10 +290,7 @@ export class Sessions extends APIResource {
    *   state (terminated, error).
    * @throws AnyframeError if the session doesn't run within `timeout` ms.
    */
-  async waitUntilRunning(
-    sessionId: string,
-    opts: WaitUntilRunningOptions = {},
-  ): Promise<Session> {
+  async waitUntilRunning(sessionId: string, opts: WaitUntilRunningOptions = {}): Promise<Session> {
     const timeout = opts.timeout ?? 180_000;
     const pollInterval = opts.pollInterval ?? 1_000;
     const deadline = Date.now() + timeout;
@@ -306,14 +303,10 @@ export class Sessions extends APIResource {
       });
       if (session.status === "running") return session;
       if (TERMINAL_NON_RUNNING.has(session.status)) {
-        throw new AnyframeError(
-          `session ${sessionId} ended in state ${session.status}`,
-        );
+        throw new AnyframeError(`session ${sessionId} ended in state ${session.status}`);
       }
       if (Date.now() >= deadline) {
-        throw new AnyframeError(
-          `session ${sessionId} did not reach 'running' within ${timeout}ms`,
-        );
+        throw new AnyframeError(`session ${sessionId} did not reach 'running' within ${timeout}ms`);
       }
       await sleep(pollInterval);
     }
@@ -384,10 +377,7 @@ export class Sessions extends APIResource {
    *
    * Pass `lastEventId` to resume from a prior checkpoint.
    */
-  async events(
-    sessionId: string,
-    opts: EventsOptions = {},
-  ): Promise<Stream<SSEEvent>> {
+  async events(sessionId: string, opts: EventsOptions = {}): Promise<Stream<SSEEvent>> {
     const controller = new AbortController();
     if (opts.signal) {
       const onAbort = () => controller.abort();

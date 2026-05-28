@@ -9,8 +9,8 @@ describe("sessions.events streaming", () => {
     const { client, mock } = makeClient();
     mock.get("/api/sessions/abc/events", () =>
       sseResponse([
-        "event: message\ndata: {\"text\":\"hello\"}\nid: 1\n\n",
-        "event: message\ndata: {\"text\":\"world\"}\nid: 2\n\n",
+        'event: message\ndata: {"text":"hello"}\nid: 1\n\n',
+        'event: message\ndata: {"text":"world"}\nid: 2\n\n',
       ]),
     );
     const stream = await client.sessions.events("abc");
@@ -59,10 +59,7 @@ describe("agents.streamBuild", () => {
   it("streams build-log events", async () => {
     const { client, mock } = makeClient();
     mock.get("/api/agents/1/builds/2/stream", () =>
-      sseResponse([
-        "event: log\ndata: building...\n\n",
-        "event: state\ndata: succeeded\n\n",
-      ]),
+      sseResponse(["event: log\ndata: building...\n\n", "event: state\ndata: succeeded\n\n"]),
     );
     const stream = await client.agents.streamBuild(1, 2);
     const events = await stream.toArray();

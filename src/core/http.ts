@@ -21,10 +21,7 @@ import {
 import type { Logger } from "./logger.js";
 import { VERSION } from "../version.js";
 
-export type FetchLike = (
-  input: string | URL,
-  init?: RequestInit,
-) => Promise<Response>;
+export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
 export interface RequestOptions {
   /** Per-call timeout in milliseconds. Overrides the client default. */
@@ -108,10 +105,7 @@ export class HTTPClient {
    * Streaming requests do not auto-retry — once the headers are flushed,
    * the server has committed to the stream and retrying would skip frames.
    */
-  async stream(
-    req: InternalRequest,
-    controller: AbortController,
-  ): Promise<Response> {
+  async stream(req: InternalRequest, controller: AbortController): Promise<Response> {
     const response = await this.doFetch(
       { ...req, stream: true },
       controller,
@@ -140,9 +134,7 @@ export class HTTPClient {
     }
 
     const timeout = req.options?.timeout ?? this.timeout;
-    const maxRetries = allowRetry
-      ? Math.max(0, req.options?.maxRetries ?? this.maxRetries)
-      : 0;
+    const maxRetries = allowRetry ? Math.max(0, req.options?.maxRetries ?? this.maxRetries) : 0;
     const userSignal = req.options?.signal;
 
     let attempt = 0;
@@ -163,28 +155,18 @@ export class HTTPClient {
           signal: controller.signal,
         });
         const elapsed = Date.now() - start;
-        this.logger.debug(
-          `${req.method} ${req.path} -> ${response.status} (${elapsed}ms)`,
-        );
+        this.logger.debug(`${req.method} ${req.path} -> ${response.status} (${elapsed}ms)`);
 
         if (response.ok) return response;
 
-        if (
-          attempt < maxRetries &&
-          RETRYABLE_STATUS.has(response.status) &&
-          !userSignal?.aborted
-        ) {
+        if (attempt < maxRetries && RETRYABLE_STATUS.has(response.status) && !userSignal?.aborted) {
           await sleep(backoffMs(attempt, response.headers.get("retry-after")));
           attempt += 1;
           continue;
         }
 
         const body = await safeReadBody(response);
-        throw APIError.from(
-          response.status,
-          body,
-          headersToRecord(response.headers),
-        );
+        throw APIError.from(response.status, body, headersToRecord(response.headers));
       } catch (err) {
         lastError = err;
         if (userSignal?.aborted) throw new APIUserAbortError();

@@ -100,10 +100,10 @@ export class MockFetch {
 
     const route = this.routes.find((r) => r.method === method && r.path === path);
     if (!route) {
-      return new Response(
-        JSON.stringify({ detail: `no mock for ${method} ${path}` }),
-        { status: 599, headers: { "content-type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ detail: `no mock for ${method} ${path}` }), {
+        status: 599,
+        headers: { "content-type": "application/json" },
+      });
     }
     // Honor AbortSignal so abort + timeout tests behave like a real fetch.
     const signal = init?.signal as AbortSignal | undefined;
