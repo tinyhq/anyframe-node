@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { APIUserAbortError } from "../src/index.js";
 import { makeClient } from "./helpers/client.js";
 import { emptyResponse, jsonResponse } from "./helpers/mock-fetch.js";
 
@@ -168,6 +169,22 @@ describe("Agents", () => {
     expect(s.name).toBe("deploy");
   });
 
+  it("waitForBuild aborts promptly via signal during sleep", async () => {
+    const { client, mock } = makeClient();
+    const controller = new AbortController();
+    // First call returns "running". The poll loop then enters abortableSleep
+    // for a long interval; the abort should preempt it.
+    mock.get("/api/agents/1/build/status", () => jsonResponse({ agent_id: 1, state: "running" }));
+    setTimeout(() => controller.abort(), 20);
+    await expect(
+      client.agents.waitForBuild(1, {
+        pollInterval: 10_000,
+        timeout: 60_000,
+        signal: controller.signal,
+      }),
+    ).rejects.toBeInstanceOf(APIUserAbortError);
+  });
+
   it("waitForBuild resolves on terminal success state", async () => {
     const { client, mock } = makeClient();
     let calls = 0;
@@ -222,6 +239,20 @@ describe("Sessions", () => {
     });
     expect(s.status).toBe("running");
     expect(calls).toBe(2);
+  });
+
+  it("waitUntilRunning aborts promptly via signal during sleep", async () => {
+    const { client, mock } = makeClient();
+    const controller = new AbortController();
+    mock.get("/api/sessions/abc", () => jsonResponse(sessionFixture({ status: "booting" })));
+    setTimeout(() => controller.abort(), 20);
+    await expect(
+      client.sessions.waitUntilRunning("abc", {
+        pollInterval: 10_000,
+        timeout: 60_000,
+        signal: controller.signal,
+      }),
+    ).rejects.toBeInstanceOf(APIUserAbortError);
   });
 
   it("waitUntilRunning throws when session enters terminal state", async () => {

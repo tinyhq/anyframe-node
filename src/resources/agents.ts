@@ -13,12 +13,13 @@
  * {@link Agents.waitForBuild}, and {@link Agents.streamBuild}.
  */
 
-import { AnyframeError } from "../core/errors.js";
+import { AnyframeError, APIUserAbortError } from "../core/errors.js";
 import type { HTTPClient, RequestOptions } from "../core/http.js";
 import { APIResource } from "../core/resource.js";
 import type { SSEEvent } from "../core/sse.js";
 import type { Stream } from "../core/stream.js";
 import { makeSSEStream } from "../core/stream.js";
+import { abortableSleep, prune } from "../core/util.js";
 import type {
   Agent,
   AgentConnectorToggle,
@@ -35,18 +36,6 @@ import type {
 } from "../types.js";
 
 const TERMINAL_BUILD_STATES = new Set(["succeeded", "failed", "cancelled"]);
-
-function prune<T extends object>(obj: T): Partial<T> {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v !== undefined && v !== null) out[k] = v;
-  }
-  return out as Partial<T>;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 // ── Sub-resources ──────────────────────────────────────────────────────────
 
@@ -394,15 +383,12 @@ export class Agents extends APIResource {
   async waitForBuild(agentId: number, options: WaitForBuildOptions = {}): Promise<BuildStatus> {
     const timeout = options.timeout ?? 600_000;
     const pollInterval = options.pollInterval ?? 2_000;
+    const signal = options.signal;
     const deadline = Date.now() + timeout;
     // Loop until terminal state, timeout, or abort.
     while (true) {
-      if (options.signal?.aborted) {
-        throw new AnyframeError("waitForBuild aborted");
-      }
-      const status = await this.buildStatus(agentId, {
-        ...(options.signal ? { signal: options.signal } : {}),
-      });
+      if (signal?.aborted) throw new APIUserAbortError();
+      const status = await this.buildStatus(agentId, signal ? { signal } : {});
       if (status.state && TERMINAL_BUILD_STATES.has(status.state)) {
         if (status.state === "failed") {
           throw new AnyframeError(`build failed: ${status.error ?? "unknown error"}`);
@@ -412,7 +398,8 @@ export class Agents extends APIResource {
       if (Date.now() >= deadline) {
         throw new AnyframeError(`build for agent ${agentId} did not finish within ${timeout}ms`);
       }
-      await sleep(pollInterval);
+      // Abort-aware sleep so aborts propagate within ms, not pollInterval.
+      await abortableSleep(pollInterval, signal);
     }
   }
 }

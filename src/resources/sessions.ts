@@ -11,12 +11,13 @@
  * setup-session promotion (`saveAsBase`).
  */
 
-import { AnyframeError } from "../core/errors.js";
+import { AnyframeError, APIUserAbortError } from "../core/errors.js";
 import type { HTTPClient, RequestOptions } from "../core/http.js";
 import { APIResource } from "../core/resource.js";
 import type { SSEEvent } from "../core/sse.js";
 import type { Stream } from "../core/stream.js";
 import { makeSSEStream } from "../core/stream.js";
+import { abortableSleep, prune } from "../core/util.js";
 import type {
   ChatEvent,
   Preview,
@@ -29,18 +30,6 @@ import type {
 } from "../types.js";
 
 const TERMINAL_NON_RUNNING = new Set(["terminated", "error"]);
-
-function prune<T extends object>(obj: T): Partial<T> {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v !== undefined && v !== null) out[k] = v;
-  }
-  return out as Partial<T>;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export interface CreateSessionParams {
   agent_id: number;
@@ -293,14 +282,11 @@ export class Sessions extends APIResource {
   async waitUntilRunning(sessionId: string, opts: WaitUntilRunningOptions = {}): Promise<Session> {
     const timeout = opts.timeout ?? 180_000;
     const pollInterval = opts.pollInterval ?? 1_000;
+    const signal = opts.signal;
     const deadline = Date.now() + timeout;
     while (true) {
-      if (opts.signal?.aborted) {
-        throw new AnyframeError("waitUntilRunning aborted");
-      }
-      const session = await this.get(sessionId, {
-        ...(opts.signal ? { signal: opts.signal } : {}),
-      });
+      if (signal?.aborted) throw new APIUserAbortError();
+      const session = await this.get(sessionId, signal ? { signal } : {});
       if (session.status === "running") return session;
       if (TERMINAL_NON_RUNNING.has(session.status)) {
         throw new AnyframeError(`session ${sessionId} ended in state ${session.status}`);
@@ -308,7 +294,8 @@ export class Sessions extends APIResource {
       if (Date.now() >= deadline) {
         throw new AnyframeError(`session ${sessionId} did not reach 'running' within ${timeout}ms`);
       }
-      await sleep(pollInterval);
+      // Abort-aware sleep so aborts propagate within ms, not pollInterval.
+      await abortableSleep(pollInterval, signal);
     }
   }
 
