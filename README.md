@@ -1,10 +1,8 @@
 # anyframe
 
 [![npm version](https://img.shields.io/npm/v/anyframe.svg)](https://www.npmjs.com/package/anyframe)
-[![CI](https://github.com/tinyhq/anyframe-node/actions/workflows/ci.yml/badge.svg)](https://github.com/tinyhq/anyframe-node/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-The official JavaScript / TypeScript SDK for the [AnyFrame](https://anyfrm.com) control plane — point an agent at a repo, get a sandbox running Claude Code (or Codex) inside.
+The official JavaScript / TypeScript SDK for the [AnyFrame](https://anyfrm.com) control plane - point an agent at a repo, get a sandbox running Claude Code inside.
 
 ```
                                 ┌──────────────────────────────┐
@@ -14,7 +12,7 @@ The official JavaScript / TypeScript SDK for the [AnyFrame](https://anyfrm.com) 
                                 │   └── Connector toggles      │
    ┌──────────┐   anyframe SDK  └─────────────┬────────────────┘
    │   you    │ ───────────────────▶          │  build
-   │ (TS/JS)  │                               ▼
+   │ (ts/js)  │                               ▼
    └──────────┘   ┌──────────────────────────────────────────┐
                   │ Session (sandbox · chat · serve)         │
                   └──────────────────────────────────────────┘
@@ -22,403 +20,273 @@ The official JavaScript / TypeScript SDK for the [AnyFrame](https://anyfrm.com) 
 
 User-level **Connectors** plug MCP servers (Linear, Sentry, …) in once and toggle them per-agent. **Skills** + **MCPs** ride with the agent into every session it boots.
 
-Runs on Node 18+, Bun, Deno, Cloudflare Workers, and the browser — anywhere with a global `fetch`.
-
 ## Install
 
 ```bash
-# npm
 npm install anyframe
-
-# bun
-bun add anyframe
-
-# pnpm
-pnpm add anyframe
-
-# yarn
-yarn add anyframe
+# bun add anyframe   ·   pnpm add anyframe   ·   yarn add anyframe
 ```
+
+Runs on Node 18+, Bun, Deno, Cloudflare Workers, and the browser - anywhere with a global `fetch`.
 
 ## Quickstart
 
 ```ts
 import Anyframe from "anyframe";
 
-const client = new Anyframe();          // reads ANYFRAME_API_KEY + ANYFRAME_BASE_URL
+const af = new Anyframe();          // reads ANYFRAME_API_KEY + ANYFRAME_BASE_URL
 
-const agent = await client.agents.create({
-  name: "demo",
-  repo_url: "tinyhq/box",
-  install_cmd: "bun install",
-});
+const agent = await af.agents.create({ name: "demo", repo_url: "tinyhq/box", install_cmd: "bun install" });
+await af.agents.build(agent.id);
+await af.agents.waitForBuild(agent.id);
 
-await client.agents.build(agent.id);
-await client.agents.waitForBuild(agent.id);
-
-const session = await client.sessions.create({ agent_id: agent.id });
-await client.sessions.waitUntilRunning(session.id);
-
-console.log(session.sandbox_url);
+const session = await af.sessions.create({ agent_id: agent.id });
+const ready = await af.sessions.waitUntilRunning(session.id);
+console.log(ready.sandbox_url);
 ```
 
 ## Authentication
 
-Set environment variables (or pass them explicitly):
+`.env` in your project root, or shell environment:
 
 ```bash
 ANYFRAME_API_KEY=afm_...
-ANYFRAME_BASE_URL=https://api.anyfrm.com   # optional, this is the default
-ANYFRAME_LOG_LEVEL=debug                   # optional, debug | info | warn | error | silent
+ANYFRAME_BASE_URL=https://api.anyfrm.com   # optional
+ANYFRAME_LOG_LEVEL=debug                   # set debug for request tracing
 ```
 
-Mint a key in the dashboard, or from a logged-in session via the SDK:
-
-```ts
-const t = await client.tokens.create({ name: "my-laptop" });
-console.log(t.token); // afm_... — store it now, it isn't shown again
-```
-
-## Streaming chat events
-
-```ts
-const stream = await client.sessions.events(session.id);
-
-for await (const event of stream) {
-  console.log(event.event, event.data);
-}
-
-// Cancel from outside the loop:
-stream.controller.abort();
-```
-
-The stream is a single-pass async iterable. Pass `lastEventId` to resume from a checkpoint after a disconnect — the server replays anything past that sequence.
-
-```ts
-const stream = await client.sessions.events(session.id, {
-  lastEventId: "42",
-});
-```
+Mint a key in the dashboard, or from a logged-in session with `af.tokens.create({ name: "..." })`.
 
 ## Agents
 
-Agents are the unit of "what runs in the sandbox" — a repo, a system prompt, a permissions config.
+Agents are the unit of "what runs in the sandbox" - a repo, a system prompt, a permissions config.
 
 ```ts
-await client.agents.list();
-await client.agents.create({
+await af.agents.list();
+await af.agents.create({
   name: "demo",
   repo_url: "owner/name",
   install_cmd: "bun install",
   runtime: "claude",                   // or "codex"
   env_vars: { DATABASE_URL: "..." },   // injected into every session
 });
-await client.agents.get(agentId);      // AgentDetail: includes skills, mcps, connectors, image
-await client.agents.update(agentId, { name: "renamed" });
-await client.agents.delete(agentId);
+await af.agents.get(agentId);                  // AgentDetail: includes skills, mcps, connectors, image
+await af.agents.update(agentId, { name: "renamed" });
+await af.agents.delete(agentId);
 ```
 
-### Skills
+## Skills
 
-Skills are bundles of instructions the agent loads at boot ("deploy this app", "review this PR").
+Skills are bundles of instructions the agent loads at boot (think: "deploy this app", "review this PR").
 
 ```ts
-await client.agents.skills.list(agentId);
-await client.agents.skills.create(agentId, {
-  name: "deploy",
-  source: "inline",
-  content: { md: "When asked to deploy, run `railway up`..." },
-});
-await client.agents.skills.update(agentId, skillId, { enabled: false });
-await client.agents.skills.delete(agentId, skillId);
+await af.agents.skills.list(agentId);
+await af.agents.skills.create(agentId, { name: "deploy", source: "inline", content: { /* ... */ } });
+await af.agents.skills.update(agentId, skillId, { enabled: false });
+await af.agents.skills.delete(agentId, skillId);
 ```
 
-### MCPs
+## MCPs
 
-Inline MCP servers attached to one agent. For reusable MCP setups, see Connectors below.
+MCPs configured inline on the agent - for one-off MCP servers that aren't worth setting up as a reusable connector.
 
 ```ts
-await client.agents.mcps.list(agentId);
-await client.agents.mcps.create(agentId, {
-  name: "git",
-  transport: "http",
-  config: { url: "..." },
-});
+await af.agents.mcps.list(agentId);
+await af.agents.mcps.create(agentId, { name: "git", transport: "http", config: { url: "..." } });
+await af.agents.mcps.update(agentId, mcpId, { enabled: false });
+await af.agents.mcps.delete(agentId, mcpId);
 ```
 
 ## Connectors
 
-User-level MCP connectors — configure once, then opt in per-agent.
+User-level MCP connectors - configure once, then opt in per-agent via the connector-toggle API below.
 
 ```ts
-await client.connectors.list();
-
-const d = await client.connectors.discover("https://mcp.linear.app/sse");
-const auth = await client.connectors.createOauth({
-  mcp_url: d.mcp_url,
-  display_name: "Linear",
-});
-// Open auth.authorize_url in a browser; the callback completes server-side.
-
-await client.connectors.createBearer({
-  mcp_url: "https://example.com/mcp",
-  display_name: "Internal MCP",
-  token: "...",
-});
-
-await client.connectors.reauthorize(connectorId);
-await client.connectors.delete(connectorId);
+await af.connectors.list();
+const discovery = await af.connectors.discover("https://mcp.linear.app/sse");
+const authorize = await af.connectors.createOauth({ mcp_url: discovery.mcp_url, display_name: "Linear" });
+// open authorize.authorize_url in a browser; callback completes server-side
+await af.connectors.createBearer({ mcp_url: "...", display_name: "...", token: "..." });
+await af.connectors.reauthorize(connectorId);
+await af.connectors.delete(connectorId);
 ```
 
 ### Catalog
 
-The control plane ships with a curated catalog (Linear, Sentry, Google, …). Install by slug:
+The control plane ships with a curated catalog (Linear, Sentry, Google, …). Install by slug instead of pasting URLs.
 
 ```ts
-const catalog = await client.connectors.listCatalog();
-await client.connectors.installCatalogOauth("linear");       // → authorize URL
-await client.connectors.installCatalogBearer("sentry", { token: "..." });
+const catalog = await af.connectors.listCatalog();              // ConnectorCatalogItem[]
+await af.connectors.installCatalogOauth("linear");              // → authorize URL (DCR or pre-registered)
+await af.connectors.installCatalogBearer("sentry", { token: "..." });
 ```
 
-Per-agent toggle — which connectors apply to a given agent:
+Per-agent toggle (controls which connectors apply to one agent):
 
 ```ts
-await client.agents.connectors.list(agentId);
-await client.agents.connectors.set(agentId, connectorId, { enabled: true });
+await af.agents.connectors.list(agentId);
+await af.agents.connectors.set(agentId, connectorId, { enabled: true });
 ```
 
 ## Builds
 
-Builds bake an agent's repo + dependencies into a cached sandbox image — required before a session can boot.
+Builds bake an agent's repo + dependencies into a cached sandbox image - required before a session can boot it.
 
 ```ts
-const queued = await client.agents.build(agentId, { force: false });
-const status = await client.agents.buildStatus(agentId);
-const history = await client.agents.builds(agentId, { limit: 20 });
-const log = await client.agents.buildLogUrl(agentId, buildId);
-
-await client.agents.waitForBuild(agentId);   // polls until terminal
-
-// Or stream build logs as they happen:
-const stream = await client.agents.streamBuild(agentId, buildId);
-for await (const event of stream) {
-  console.log(event.event, event.data);
-}
+await af.agents.build(agentId, { force: false });               // queue a build
+await af.agents.buildStatus(agentId);                           // current state + cached image id
+await af.agents.builds(agentId, { limit: 20 });                 // history
+await af.agents.buildLogUrl(agentId, buildId);                  // signed R2 URL for the archived log
+const stream = await af.agents.streamBuild(agentId, buildId);
+for await (const event of stream) console.log(event.event, event.data);   // live SSE log frames
+await af.agents.waitForBuild(agentId);                          // blocks until succeeded / fails
 ```
 
 ## Sessions
 
+A session is one live sandbox. Lifecycle is `booting → running → snapshotting → terminated`; `resume` brings a terminated session back from its snapshot.
+
 ```ts
-const session = await client.sessions.create({
-  agent_id: agentId,
-  idle_timeout_s: 600,         // optional, default 300
-});
-
-await client.sessions.waitUntilRunning(session.id);
-
-await client.sessions.sendMessage(session.id, { content: "summarize the README" });
-
-// Persisted chat history (server-side):
-const events = await client.sessions.transcript(session.id, { since: 0, limit: 1000 });
-
-// Snapshot + terminate, then re-boot from the snapshot later:
-await client.sessions.terminate(session.id);
-await client.sessions.resume(session.id);
-
-// Or delete entirely:
-await client.sessions.delete(session.id);
+const session = await af.sessions.create({ agent_id: agent.id, idle_timeout_s: 300 });
+await af.sessions.waitUntilRunning(session.id);
+await af.sessions.list();
+await af.sessions.get(session.id);
+await af.sessions.snapshots(session.id);
+await af.sessions.terminate(session.id);
+await af.sessions.resume(session.id);
+await af.sessions.delete(session.id);                            // hard delete; requires terminated
 ```
 
-### Live previews
+### Setup sessions + save-as-base
 
-Start dev servers inside the sandbox and proxy them out via the control plane:
+Setup sessions are user-driven sandboxes you use to seed an agent's filesystem (clone, install, warm caches), then promote to that agent's warmup image. Future normal sessions then hydrate from the promoted snapshot.
 
 ```ts
-await client.sessions.previews.start(session.id, { cmd: "bun dev", port: 3000 });
-await client.sessions.previews.list(session.id);
-await client.sessions.previews.stop(session.id, { port: 3000 });
-await client.sessions.previews.logs(session.id, { port: 3000, tail: 200 });
+const session = await af.sessions.create({ agent_id: agent.id, is_setup_session: true });
+await af.sessions.waitUntilRunning(session.id);
+// ... do interactive setup ...
+const result = await af.sessions.saveAsBase(session.id);          // SaveAsBaseResult
+console.log(result.warmup_image_id);
+```
 
-// Or start a batch atomically (restart-once semantics):
-await client.sessions.previews.batchStart(session.id, [
+## Chat
+
+Talk to the running agent. `sendMessage` and `respond` proxy verbatim to the in-sandbox chat server; `events` is the live SSE stream; `transcript` reads persisted history.
+
+```ts
+await af.sessions.sendMessage(session.id, { text: "deploy main to staging" });
+const stream = await af.sessions.events(session.id, { lastEventId: undefined });
+for await (const event of stream) console.log(event.id, event.event, event.data);
+await af.sessions.transcript(session.id, { since: 0, limit: 1000 });
+await af.sessions.respond(session.id, { decision: "approve", tool_use_id: "..." });
+```
+
+Cancel a stream from outside the loop with `stream.controller.abort()`.
+
+## Previews (in-sandbox dev servers)
+
+Launch dev servers inside the sandbox and tunnel their ports out. Multiple previews can run per session - name them or address them by port.
+
+```ts
+await af.sessions.previews.start(session.id, { cmd: "bun dev", port: 3000, name: "web" });
+await af.sessions.previews.status(session.id, { name: "web" });   // PreviewActionResult
+await af.sessions.previews.list(session.id);                       // Preview[]
+await af.sessions.previews.logs(session.id, { name: "web", tail: 200 });
+await af.sessions.previews.stop(session.id, { name: "web" });
+
+// Atomic batch - restarts at most once when allocating new ports
+await af.sessions.previews.batchStart(session.id, [
   { cmd: "bun dev", port: 3000, name: "web" },
-  { cmd: "bun worker", name: "worker" },
+  { cmd: "bun api", port: 4000, name: "api" },
 ]);
 ```
 
 ## Attention rail
 
+A curated, newest-first list of things the operator should act on - pending permission prompts, idle running sessions, and recently-paused sessions.
+
 ```ts
-const items = await client.attention.list();
-for (const item of items) {
-  if (item.kind === "pending") {
-    // operator action needed (permission request or ask_user_question)
-  }
+for (const item of await af.attention.list({ limit: 20 })) {
+  console.log(item.kind, item.agent_name);
 }
 ```
 
-## Error handling
+Each row is one of `AttentionPendingItem`, `AttentionIdleItem`, or `AttentionPausedItem`. Discriminate on `item.kind`.
 
-Every failure derives from `AnyframeError`. The typed subclasses let you branch on intent:
+## Credentials
+
+The control plane needs a runtime credential - Claude OAuth (default Claude runtime) or an OpenAI Codex token (Codex runtime) - plus a GitHub PAT for private repos. It only ever shows you redacted views.
 
 ```ts
-import Anyframe, { NotFoundError, RateLimitError } from "anyframe";
-
-try {
-  await client.agents.get(9999);
-} catch (err) {
-  if (err instanceof NotFoundError) {
-    console.log("no such agent");
-  } else if (err instanceof RateLimitError) {
-    console.log(`slow down for ${err.retryAfter}s`);
-  } else if (err instanceof Anyframe.APIError) {
-    console.log(`api error ${err.status}: ${err.message}`);
-  } else {
-    throw err;
-  }
-}
+await af.credentials.get();                       // set flag + last4 for claude / codex / github
+await af.credentials.setClaude("sk-...");
+await af.credentials.setCodex("sk-...");
+await af.credentials.setGithub("ghp_...");
+await af.credentials.clearClaude();
+await af.credentials.clearCodex();
+await af.credentials.clearGithub();
 ```
 
-| Status   | Class                       |
-| -------- | --------------------------- |
-| 401      | `AuthenticationError`       |
-| 403      | `PermissionDeniedError`     |
-| 404      | `NotFoundError`             |
-| 409      | `ConflictError`             |
-| 400, 422 | `ValidationError`           |
-| 429      | `RateLimitError`            |
-| 5xx      | `ServerError`               |
-| —        | `APIConnectionError`        |
-| —        | `APIConnectionTimeoutError` |
-| —        | `APIUserAbortError`         |
+## Tokens
 
-Error instances expose `status`, `body`, `headers`, and `requestId` (from the `x-request-id` response header).
-
-## Per-call options
-
-Every method accepts an optional `RequestOptions` argument:
+Manage the API keys this SDK uses. `create` returns the raw token exactly once - store it now.
 
 ```ts
-await client.agents.list({
-  timeout: 5000,                       // ms; overrides the client default
-  signal: controller.signal,           // AbortSignal for cancellation
-  headers: { "x-trace-id": "..." },    // merged over client defaults
-  query: { /* additional query params */ },
-  maxRetries: 0,                       // override the client retry policy
-});
+await af.tokens.list();
+const created = await af.tokens.create({ name: "ci-bot" });
+console.log(created.token);                       // afm_...  one-time
+await af.tokens.revoke(created.id);
+```
+
+## Errors
+
+All errors derive from `AnyframeError`, so one `catch` catches everything.
+
+```ts
+import { AnyframeError, APIError, AuthenticationError, NotFoundError,
+         ConflictError, ValidationError, RateLimitError, ServerError } from "anyframe";
+
+AnyframeError                        // base
+├── APIError                         // any non-2xx (status, message, body, requestId)
+│   ├── AuthenticationError          // 401 - bad / missing API key
+│   ├── PermissionDeniedError        // 403
+│   ├── NotFoundError                // 404
+│   ├── ConflictError                // 409 - e.g. delete on a running session
+│   ├── ValidationError              // 400/422 (carries field-level details)
+│   ├── RateLimitError               // 429 (exposes retryAfter)
+│   ├── ServerError                  // 5xx
+│   ├── APIConnectionError           // network failure
+│   └── APIConnectionTimeoutError    // exceeded the per-request timeout
+└── APIUserAbortError                // AbortSignal fired
 ```
 
 ## Client options
 
 ```ts
-const client = new Anyframe({
+const af = new Anyframe({
   apiKey: "afm_...",                   // or ANYFRAME_API_KEY
   baseURL: "https://api.anyfrm.com",   // or ANYFRAME_BASE_URL
   timeout: 30_000,                     // default 30s
-  maxRetries: 2,                       // default 2; retries on 408/409/429/5xx
-  fetch: customFetch,                  // for proxies, observability, etc.
+  maxRetries: 2,                       // retries on 408 / 409 / 429 / 5xx with backoff
+  fetch: customFetch,                  // inject a proxy / observability wrapper
   defaultHeaders: { "x-service": "demo" },
 });
 ```
 
-## Retry behaviour
-
-The SDK retries up to `maxRetries` times (default 2) on these conditions:
-
-- HTTP 408, 409, 429, 500, 502, 503, 504
-- Network errors (`TypeError` from `fetch` — DNS, connection refused, etc.)
-
-Backoff is exponential with jitter, capped at 5s per retry. When the server sets `Retry-After` (on 429), the SDK honors that header value (capped at 30s).
-
-Streaming endpoints (`sessions.events`, `agents.streamBuild`) do **not** retry once headers are flushed — retrying would skip events.
-
-## Custom fetch
-
-For runtimes without a global `fetch`, or to inject a proxy / observability wrapper:
-
-```ts
-import Anyframe from "anyframe";
-import { fetch as undiciFetch } from "undici";
-
-const client = new Anyframe({ fetch: undiciFetch as any });
-```
+Every method accepts a final `RequestOptions` argument: `{ timeout, signal, headers, query, maxRetries }`.
 
 ## CommonJS
 
-The package ships dual ESM + CJS bundles. ESM is preferred. CJS users should use **named imports** to access the class:
+Both ESM and CJS are shipped. CJS users should use **named imports**:
 
 ```js
-const { Anyframe } = require("anyframe");
-const client = new Anyframe();
-
-// Error classes are also named exports:
-const { NotFoundError } = require("anyframe");
+const { Anyframe, NotFoundError } = require("anyframe");
 ```
-
-(`const Anyframe = require("anyframe")` returns the module object, not the class — use `require("anyframe").default` or named destructuring.)
-
-## Development
-
-Clone the repo and install:
-
-```bash
-git clone https://github.com/tinyhq/anyframe-node.git
-cd anyframe-node
-npm install
-```
-
-Common scripts:
-
-```bash
-npm run build          # bundle ESM + CJS + .d.ts into dist/
-npm test               # run vitest once
-npm run test:watch     # vitest in watch mode
-npm run test:coverage  # vitest with coverage report
-npm run lint           # eslint
-npm run typecheck      # tsc --noEmit (src + tests)
-npm run format         # prettier --write
-```
-
-Run the examples against a local AnyFrame control plane:
-
-```bash
-ANYFRAME_API_KEY=afm_local ANYFRAME_BASE_URL=http://localhost:8000 \
-  npx tsx examples/basic.ts
-```
-
-To use the in-development SDK inside another project on the same machine, link it:
-
-```bash
-# In this repo:
-npm run build
-npm link
-
-# In your sample project:
-npm link anyframe
-```
-
-Or with Bun:
-
-```bash
-# In this repo:
-bun link
-
-# In your sample project:
-bun link anyframe
-```
-
-Test the published tarball locally before shipping:
-
-```bash
-npm pack                                  # → anyframe-1.0.0.tgz
-cd ../my-sample-project
-npm install ../anyframe-node/anyframe-1.0.0.tgz
-```
-
-## Publishing
-
-See [PUBLISHING.md](./PUBLISHING.md) for the full npm + JSR (Bun / Deno) flow, including account setup, semantic-release internals, and bootstrap steps for the first release.
 
 ## License
 
-[MIT](./LICENSE) © Tiny HQ
+MIT.
+
+---
+
+Docs: [docs.anyfrm.com](https://docs.anyfrm.com) · Found a bug or have a question? [Join us on Discord](https://discord.gg/UpkEW6JjpU).
