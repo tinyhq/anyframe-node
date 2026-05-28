@@ -343,9 +343,81 @@ import { fetch as undiciFetch } from "undici";
 const client = new Anyframe({ fetch: undiciFetch as any });
 ```
 
+## CommonJS
+
+The package ships dual ESM + CJS bundles. ESM is preferred. CJS users should use **named imports** to access the class:
+
+```js
+const { Anyframe } = require("anyframe");
+const client = new Anyframe();
+
+// Error classes are also named exports:
+const { NotFoundError } = require("anyframe");
+```
+
+(`const Anyframe = require("anyframe")` returns the module object, not the class — use `require("anyframe").default` or named destructuring.)
+
+## Development
+
+Clone the repo and install:
+
+```bash
+git clone https://github.com/tinyhq/anyframe-node.git
+cd anyframe-node
+npm install
+```
+
+Common scripts:
+
+```bash
+npm run build          # bundle ESM + CJS + .d.ts into dist/
+npm test               # run vitest once
+npm run test:watch     # vitest in watch mode
+npm run test:coverage  # vitest with coverage report
+npm run lint           # eslint
+npm run typecheck      # tsc --noEmit (src + tests)
+npm run format         # prettier --write
+```
+
+Run the examples against a local AnyFrame control plane:
+
+```bash
+ANYFRAME_API_KEY=afm_local ANYFRAME_BASE_URL=http://localhost:8000 \
+  npx tsx examples/basic.ts
+```
+
+To use the in-development SDK inside another project on the same machine, link it:
+
+```bash
+# In this repo:
+npm run build
+npm link
+
+# In your sample project:
+npm link anyframe
+```
+
+Or with Bun:
+
+```bash
+# In this repo:
+bun link
+
+# In your sample project:
+bun link anyframe
+```
+
+Test the published tarball locally before shipping:
+
+```bash
+npm pack                                  # → anyframe-1.0.0.tgz
+cd ../my-sample-project
+npm install ../anyframe-node/anyframe-1.0.0.tgz
+```
+
 ## Publishing
 
-See [PUBLISHING.md](./PUBLISHING.md) for the npm and Bun (JSR) publish flows.
+See [PUBLISHING.md](./PUBLISHING.md) for the full npm + JSR (Bun / Deno) flow, including account setup, semantic-release internals, and bootstrap steps for the first release.
 
 ## License
 
