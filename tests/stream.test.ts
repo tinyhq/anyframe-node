@@ -53,6 +53,42 @@ describe("sessions.events streaming", () => {
       })(),
     ).rejects.toThrow(/already consumed/);
   });
+
+  it("cancels the upstream body when the consumer breaks early", async () => {
+    const { client, mock } = makeClient();
+    // Build a body that records cancel() calls so we can assert on them.
+    let cancelled = false;
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode("data: one\n\n"));
+        controller.enqueue(encoder.encode("data: two\n\n"));
+        // Hold the stream open — don't close it. Without cancel()
+        // propagation, breaking out of the loop would leak this.
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    mock.get(
+      "/api/sessions/abc/events",
+      () =>
+        new Response(body, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        }),
+    );
+
+    const stream = await client.sessions.events("abc");
+    for await (const event of stream) {
+      // Consume one event then break — the iterator's finally should
+      // close the upstream body.
+      expect(event.data).toBe("one");
+      break;
+    }
+    // The cancel must have fired by the time the for-await loop returns.
+    expect(cancelled).toBe(true);
+  });
 });
 
 describe("agents.streamBuild", () => {

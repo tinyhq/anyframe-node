@@ -94,18 +94,25 @@ export async function* parseSSE(lines: AsyncIterable<string>): AsyncIterable<SSE
  * Convert a `ReadableStream<Uint8Array>` (e.g. `fetch().body`) into an
  * async iterable of UTF-8 lines, splitting on `\n` and stripping `\r`.
  *
- * The stream is read once; callers should not also iterate the underlying
- * body. The reader is released automatically when the iterator ends or
- * throws.
+ * Lifecycle:
+ *   - When the source stream ends normally, the reader's lock is released.
+ *   - If the consumer breaks out of the `for await` loop early (or throws),
+ *     the generator's `return()` runs this function's `finally` block. We
+ *     cancel the underlying stream there so the upstream `fetch` body is
+ *     closed promptly instead of held open until garbage collection.
  */
 export async function* iterSSELines(body: ReadableStream<Uint8Array>): AsyncIterable<string> {
   const decoder = new TextDecoder("utf-8");
   const reader = body.getReader();
   let buffer = "";
+  let closedByEof = false;
   try {
     while (true) {
       const { value, done } = await reader.read();
-      if (done) break;
+      if (done) {
+        closedByEof = true;
+        break;
+      }
       buffer += decoder.decode(value, { stream: true });
       let newlineIdx = buffer.indexOf("\n");
       while (newlineIdx !== -1) {
@@ -122,6 +129,17 @@ export async function* iterSSELines(body: ReadableStream<Uint8Array>): AsyncIter
       yield tail.endsWith("\r") ? tail.slice(0, -1) : tail;
     }
   } finally {
+    if (!closedByEof) {
+      // The consumer left early or an error bubbled. Cancel the upstream
+      // body so the underlying HTTP socket is freed; releaseLock() alone
+      // would leak the connection. Swallow errors — we're already in
+      // cleanup and have no caller to surface them to.
+      try {
+        await reader.cancel();
+      } catch {
+        /* ignore cancel errors */
+      }
+    }
     reader.releaseLock();
   }
 }
