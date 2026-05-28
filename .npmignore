@@ -1,0 +1,17 @@
+src/
+tests/
+examples/
+.github/
+coverage/
+.context/
+.changeset/
+*.tgz
+*.test.ts
+tsconfig*.json
+tsup.config.ts
+vitest.config.ts
+eslint.config.js
+.prettierrc.json
+.prettierignore
+.releaserc.json
+PUBLISHING.md
