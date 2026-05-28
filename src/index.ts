@@ -153,8 +153,16 @@ const ErrorStatics = {
 /**
  * The AnyFrame client. Also exposes every error class as a static
  * property (e.g. `Anyframe.APIError`) for parity with the OpenAI SDK.
+ *
+ * The explicit type annotation is required for JSR — its analyzer
+ * can't see through `Object.assign` to compute the intersection on
+ * its own, and unannotated public exports are flagged as "slow types"
+ * that block publication.
  */
-export const Anyframe = Object.assign(AnyframeClient, ErrorStatics);
+export const Anyframe: typeof AnyframeClient & typeof ErrorStatics = Object.assign(
+  AnyframeClient,
+  ErrorStatics,
+);
 
 export type Anyframe = AnyframeClient;
 
