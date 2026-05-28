@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# semantic-release needs write access to push the version bump commit
+# and create the GitHub release; the publish step uses OIDC for npm
+# provenance.
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.repository == 'tinyhq/anyframe-node'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      - run: npm ci
+
+      # Re-run the suite as a guardrail before tagging + publishing. CI
+      # also runs on this push in parallel; this is the suspenders to
+      # that belt.
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Release with semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # npm provenance: published packages are attested via OIDC so
+          # consumers can verify the artifact's origin.
+          NPM_CONFIG_PROVENANCE: "true"
+        run: npx semantic-release

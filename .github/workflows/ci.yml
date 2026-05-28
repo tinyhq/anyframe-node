@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["18", "20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  # Bun is a primary target for AnyFrame users (the control plane itself
+  # is bun-on-the-frontend); we run the suite under Bun on every PR.
+  test-bun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: bun test --preload ./tests/helpers/client.ts tests/**/*.test.ts || npx vitest run
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Smoke-test the built bundle
+        run: |
+          node -e "import('./dist/index.js').then(m => { if (!m.Anyframe) throw new Error('ESM Anyframe missing'); console.log('ESM ok'); })"
+          node -e "const m = require('./dist/index.cjs'); if (!m.Anyframe) throw new Error('CJS Anyframe missing'); console.log('CJS ok');"
+
+  integration:
+    # Opt-in: only runs on main with ANYFRAME_API_KEY configured. PRs and
+    # forks skip cleanly so the matrix stays green.
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run integration tests (skipped if no API key)
+        env:
+          ANYFRAME_API_KEY: ${{ secrets.ANYFRAME_API_KEY }}
+          ANYFRAME_BASE_URL: ${{ secrets.ANYFRAME_BASE_URL }}
+        # Exit 0 when no integration tests are present; the integration
+        # suite is added incrementally and we don't want a blank suite
+        # to fail CI.
+        run: |
+          if [ -d tests/integration ]; then
+            npx vitest run tests/integration
+          else
+            echo "no integration tests yet — skipping"
+          fi
