@@ -16,7 +16,7 @@
 
 import { ENV_API_KEY, ENV_BASE_URL, readEnv } from "./core/env.js";
 import { AuthenticationError } from "./core/errors.js";
-import type { FetchLike } from "./core/http.js";
+import type { FetchLike, RequestOptions } from "./core/http.js";
 import { HTTPClient } from "./core/http.js";
 import type { Logger } from "./core/logger.js";
 import { createLogger } from "./core/logger.js";
@@ -95,8 +95,8 @@ export class Anyframe {
   }
 
   /** Return the authenticated user (`GET /api/me`). */
-  me(): Promise<User> {
-    return this._http.request<User>({ method: "GET", path: "/api/me" });
+  me(options?: RequestOptions): Promise<User> {
+    return this._http.request<User>({ method: "GET", path: "/api/me", options });
   }
 }
 

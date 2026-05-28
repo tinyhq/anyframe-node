@@ -15,7 +15,8 @@ import { AnyframeError } from "../core/errors.js";
 import type { HTTPClient, RequestOptions } from "../core/http.js";
 import { APIResource } from "../core/resource.js";
 import type { SSEEvent } from "../core/sse.js";
-import { Stream, makeSSEStream } from "../core/stream.js";
+import type { Stream } from "../core/stream.js";
+import { makeSSEStream } from "../core/stream.js";
 import type {
   ChatEvent,
   Preview,
@@ -296,7 +297,6 @@ export class Sessions extends APIResource {
     const timeout = opts.timeout ?? 180_000;
     const pollInterval = opts.pollInterval ?? 1_000;
     const deadline = Date.now() + timeout;
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       if (opts.signal?.aborted) {
         throw new AnyframeError("waitUntilRunning aborted");

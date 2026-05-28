@@ -37,12 +37,12 @@ class ConsoleLogger implements Logger {
     if (ORDER[level] < ORDER[this.level]) return;
     const line = `[anyframe] ${level.toUpperCase()} ${message}`;
     if (level === "error") {
-      // eslint-disable-next-line no-console
       console.error(line, ...args);
     } else if (level === "warn") {
-      // eslint-disable-next-line no-console
       console.warn(line, ...args);
     } else {
+      // Use console.log for debug/info — they're gated by the level check
+      // above, so they only emit when the user explicitly opted in.
       // eslint-disable-next-line no-console
       console.log(line, ...args);
     }

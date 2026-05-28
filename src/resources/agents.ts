@@ -17,7 +17,8 @@ import { AnyframeError } from "../core/errors.js";
 import type { HTTPClient, RequestOptions } from "../core/http.js";
 import { APIResource } from "../core/resource.js";
 import type { SSEEvent } from "../core/sse.js";
-import { Stream, makeSSEStream } from "../core/stream.js";
+import type { Stream } from "../core/stream.js";
+import { makeSSEStream } from "../core/stream.js";
 import type {
   Agent,
   AgentConnectorToggle,
@@ -406,7 +407,6 @@ export class Agents extends APIResource {
     const pollInterval = options.pollInterval ?? 2_000;
     const deadline = Date.now() + timeout;
     // Loop until terminal state, timeout, or abort.
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       if (options.signal?.aborted) {
         throw new AnyframeError("waitForBuild aborted");
