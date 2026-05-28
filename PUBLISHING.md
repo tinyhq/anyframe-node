@@ -238,28 +238,14 @@ The default `latest` tag is reserved for `main`. To add custom channels, extend 
 
 ## 7. Publishing to JSR (Bun + Deno)
 
-After §2.5 (JSR scope claim), add this step to the `release` job in `.github/workflows/release.yml`, right after the `semantic-release` step:
+After §2.5 (JSR scope claim), the JSR step is **already wired into `release.yml`** alongside the npm publish. The release job runs:
 
-```yaml
-- name: Sync jsr.json version with package.json
-  if: success()
-  run: |
-    node -e "
-      const fs = require('fs');
-      const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-      const jsr = JSON.parse(fs.readFileSync('jsr.json', 'utf8'));
-      if (jsr.version === pkg.version) { console.log('jsr.json already', pkg.version); process.exit(0); }
-      jsr.version = pkg.version;
-      fs.writeFileSync('jsr.json', JSON.stringify(jsr, null, 2) + '\n');
-      console.log('synced jsr.json to', pkg.version);
-    "
+1. `semantic-release` — bump version, tag, GitHub Release (does **not** publish to npm itself).
+2. `npm publish --provenance` — publishes to npm via the GitHub OIDC token. No `NPM_TOKEN` needed.
+3. **Sync `jsr.json`** to the new version that `semantic-release` just wrote into `package.json`.
+4. `npx jsr publish --allow-dirty` — publishes to JSR via OIDC (the scope link from §2.5 is the only auth).
 
-- name: Publish to JSR
-  if: success()
-  run: npx jsr publish --allow-dirty
-```
-
-JSR uses OIDC by default — the scope link from §2.5 is the only auth. No tokens.
+So `npm publish` and `jsr publish` ship side-by-side on every release.
 
 **Consumer experience once JSR is wired up:**
 

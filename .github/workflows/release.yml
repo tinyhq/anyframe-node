@@ -3,10 +3,11 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
-# semantic-release needs write access to push the version bump commit
-# and create the GitHub release; the publish step uses OIDC for npm
-# provenance.
+# semantic-release pushes the version-bump commit; the npm + JSR publish
+# steps use OIDC (id-token: write) for Trusted Publisher attestations —
+# no NPM_TOKEN / JSR_TOKEN secrets needed.
 permissions:
   contents: write
   issues: write
@@ -35,19 +36,57 @@ jobs:
 
       - run: npm ci
 
-      # Re-run the suite as a guardrail before tagging + publishing. CI
-      # also runs on this push in parallel; this is the suspenders to
-      # that belt.
+      # Pre-release guardrail: CI also runs this on the push in parallel,
+      # this is the suspenders to that belt before we tag and publish.
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
 
-      - name: Release with semantic-release
+      # semantic-release reads commits, bumps package.json + CHANGELOG.md,
+      # tags, and creates the GitHub Release. It does NOT publish to npm
+      # itself — @semantic-release/npm is configured with `npmPublish:
+      # false` (see .releaserc.json) because the Trusted Publisher OIDC
+      # flow only works with the npm CLI, not the @semantic-release/npm
+      # plugin's API client.
+      - name: semantic-release (bump, tag, GitHub release)
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          semantic_version: 24
+          extra_plugins: |
+            @semantic-release/changelog@6
+            @semantic-release/git@10
+            conventional-changelog-conventionalcommits@8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # npm provenance: published packages are attested via OIDC so
-          # consumers can verify the artifact's origin.
+
+      # npm publish via OIDC — no token. The `id-token: write` permission
+      # above lets `npm publish` mint an OIDC token, which npm's Trusted
+      # Publisher exchange resolves into a short-lived publish credential.
+      # `--provenance` attaches a signed attestation linking the tarball
+      # back to this exact workflow run.
+      - name: Publish to npm (OIDC + provenance)
+        if: steps.semantic.outputs.new_release_published == 'true'
+        env:
           NPM_CONFIG_PROVENANCE: "true"
-        run: npx semantic-release
+        run: npm publish --access public --provenance
+
+      # JSR ships TypeScript source directly. Sync jsr.json's version
+      # with the just-bumped package.json so the JSR registry sees the
+      # same number we just put on npm.
+      - name: Sync jsr.json version
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const jsr = JSON.parse(fs.readFileSync('jsr.json', 'utf8'));
+            jsr.version = pkg.version;
+            fs.writeFileSync('jsr.json', JSON.stringify(jsr, null, 2) + '\n');
+            console.log('synced jsr.json to', pkg.version);
+          "
+
+      - name: Publish to JSR (OIDC)
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: npx jsr publish --allow-dirty
