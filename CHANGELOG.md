@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/tinyhq/anyframe-node/compare/v1.0.0...v1.0.1) (2026-05-28)
+
+### Bug Fixes
+
+* unblock manual first publish for npm and jsr ([c88cd06](https://github.com/tinyhq/anyframe-node/commit/c88cd06da801a222a22e0ad0da94ace87d864096))
+
 ## 1.0.0 (2026-05-28)
 
 ### Features
