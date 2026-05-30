@@ -28,7 +28,7 @@ import { Sessions } from "./resources/sessions.js";
 import { Tokens } from "./resources/tokens.js";
 import type { User } from "./types.js";
 
-export const DEFAULT_BASE_URL = "https://api.anyfrm.com";
+export const DEFAULT_BASE_URL = "https://api.anyframe.dev";
 export const DEFAULT_TIMEOUT_MS = 30_000;
 export const DEFAULT_MAX_RETRIES = 2;
 

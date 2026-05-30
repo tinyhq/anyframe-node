@@ -32,16 +32,16 @@ describe("Anyframe constructor", () => {
     expect(mock.calls[0]?.headers.authorization).toBe("Bearer afm_envkey");
   });
 
-  it("defaults baseURL to https://api.anyfrm.com", () => {
+  it("defaults baseURL to https://api.anyframe.dev", () => {
     const client = new Anyframe({ apiKey: "afm_test" });
-    expect(client.baseURL).toBe("https://api.anyfrm.com");
+    expect(client.baseURL).toBe("https://api.anyframe.dev");
   });
 
   it("falls back to ANYFRAME_BASE_URL when baseURL not passed", () => {
     process.env.ANYFRAME_API_KEY = "afm_test";
-    process.env.ANYFRAME_BASE_URL = "https://staging.anyfrm.com";
+    process.env.ANYFRAME_BASE_URL = "https://staging.anyframe.dev";
     const client = new Anyframe();
-    expect(client.baseURL).toBe("https://staging.anyfrm.com");
+    expect(client.baseURL).toBe("https://staging.anyframe.dev");
   });
 
   it("throws AuthenticationError when no api key resolved", () => {
