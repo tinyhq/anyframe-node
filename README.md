@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/anyframe.svg)](https://www.npmjs.com/package/anyframe)
 
-The official JavaScript / TypeScript SDK for the [AnyFrame](https://anyfrm.com) control plane - point an agent at a repo, get a sandbox running Claude Code inside.
+The official JavaScript / TypeScript SDK for the [AnyFrame](https://anyframe.dev) control plane - point an agent at a repo, get a sandbox running Claude Code inside.
 
 ```
                                 ┌──────────────────────────────┐
@@ -51,7 +51,7 @@ console.log(ready.sandbox_url);
 
 ```bash
 ANYFRAME_API_KEY=afm_...
-ANYFRAME_BASE_URL=https://api.anyfrm.com   # optional
+ANYFRAME_BASE_URL=https://api.anyframe.dev   # optional
 ANYFRAME_LOG_LEVEL=debug                   # set debug for request tracing
 ```
 
@@ -265,7 +265,7 @@ AnyframeError                        // base
 ```ts
 const af = new Anyframe({
   apiKey: "afm_...",                   // or ANYFRAME_API_KEY
-  baseURL: "https://api.anyfrm.com",   // or ANYFRAME_BASE_URL
+  baseURL: "https://api.anyframe.dev",   // or ANYFRAME_BASE_URL
   timeout: 30_000,                     // default 30s
   maxRetries: 2,                       // retries on 408 / 409 / 429 / 5xx with backoff
   fetch: customFetch,                  // inject a proxy / observability wrapper
@@ -289,4 +289,4 @@ MIT.
 
 ---
 
-Docs: [docs.anyfrm.com](https://docs.anyfrm.com) · Found a bug or have a question? [Join us on Discord](https://discord.gg/UpkEW6JjpU).
+Docs: [docs.anyframe.dev](https://docs.anyframe.dev) · Found a bug or have a question? [Join us on Discord](https://discord.gg/UpkEW6JjpU).
